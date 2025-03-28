@@ -1,4 +1,2 @@
 solidity-http=lib/solidity-http/src
-@src=src
-@test=test
-@script=script
+solidity-stringutils=lib/solidity-stringutils

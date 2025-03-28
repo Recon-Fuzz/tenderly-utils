@@ -16,11 +16,11 @@ library Tenderly {
         string accountSlug;
         string projectSlug;
         string accessKey;
+        HTTP.Builder http;
     }
 
     struct Builder {
         Instance[] instances;
-        HTTP.Builder http;
     }
 
     struct Rpc {
@@ -36,8 +36,7 @@ library Tenderly {
 
     struct HTTPVars {
         string requestBody;
-        string inner;
-        string outer;
+        string tmp;
         HTTP.Response response;
     }
 
@@ -45,11 +44,16 @@ library Tenderly {
         internal
         returns (Builder storage)
     {
-        self.instances.push(Instance({accountSlug: accountSlug, projectSlug: projectSlug, accessKey: accessKey}));
+        self.instances.push();
+        Instance storage i = self.instances[self.instances.length - 1];
+        i.accountSlug = accountSlug;
+        i.projectSlug = projectSlug;
+        i.accessKey = accessKey;
+        i.http.build().withHeader("X-Access-Key", accessKey).withHeader("Content-Type", "application/json");
         return self;
     }
 
-    function _instance(Builder storage self) private view returns (Instance storage) {
+    function instance(Builder storage self) private view returns (Instance storage) {
         return self.instances[self.instances.length - 1];
     }
 
@@ -58,10 +62,17 @@ library Tenderly {
         internal
         returns (VirtualTestnet memory)
     {
-        Instance memory i = _instance(self);
-        HTTP.Response memory response = self.http.build().GET(
-            string.concat(BASE_URL, "/account/", i.accountSlug, "/project/", i.projectSlug, "/vnets/", vnetId)
-        ).withHeader("X-Access-Key", i.accessKey).request();
+        HTTP.Response memory response = instance(self).http.build().GET(
+            string.concat(
+                BASE_URL,
+                "/account/",
+                instance(self).accountSlug,
+                "/project/",
+                instance(self).projectSlug,
+                "/vnets/",
+                vnetId
+            )
+        ).request();
 
         return VirtualTestnet({
             id: abi.decode(vm.parseJson(response.data, ".id"), (string)),
@@ -75,35 +86,34 @@ library Tenderly {
         internal
         returns (VirtualTestnet memory)
     {
-        Instance memory i = _instance(self);
         HTTPVars memory vars;
 
         vars.requestBody = vm.serializeString(".", "slug", slug);
         vars.requestBody = vm.serializeString(".", "display_name", slug);
 
-        vars.inner = vm.serializeUint(".fork_config", "network_id", block.chainid);
-        vars.inner = vm.serializeString(".fork_config", "block_number", "latest");
-        vars.requestBody = vm.serializeString(".", "fork_config", vars.inner);
+        vars.tmp = vm.serializeUint(".fork_config", "network_id", block.chainid);
+        vars.tmp = vm.serializeString(".fork_config", "block_number", "latest");
+        vars.requestBody = vm.serializeString(".", "fork_config", vars.tmp);
 
-        vars.inner = "";
-        vars.inner = vm.serializeUint(".virtual_network_config", "chain_id", chainId);
-        vars.outer = vm.serializeString(".virtual_network_config.chain_config", "chain_config", vars.inner);
-        vars.requestBody = vm.serializeString(".", "virtual_network_config", vars.outer);
+        vars.tmp = "";
+        vars.tmp = vm.serializeUint(".virtual_network_config", "chain_id", chainId);
+        vars.tmp = vm.serializeString(".virtual_network_config.chain_config", "chain_config", vars.tmp);
+        vars.requestBody = vm.serializeString(".", "virtual_network_config", vars.tmp);
 
-        vars.inner = "";
-        vars.inner = vm.serializeString(".sync_state_config", "enabled", "false");
-        vars.requestBody = vm.serializeString(".", "sync_state_config", vars.inner);
+        vars.tmp = "";
+        vars.tmp = vm.serializeBool(".sync_state_config", "enabled", false);
+        vars.requestBody = vm.serializeString(".", "sync_state_config", vars.tmp);
 
-        vars.inner = "";
-        vars.inner = vm.serializeString(".explorer_page_config", "enabled", "true");
-        vars.inner = vm.serializeString(".explorer_page_config", "verification_visibility", "src");
-        vars.requestBody = vm.serializeString(".", "explorer_page_config", vars.inner);
+        vars.tmp = "";
+        vars.tmp = vm.serializeBool(".explorer_page_config", "enabled", true);
+        vars.tmp = vm.serializeString(".explorer_page_config", "verification_visibility", "src");
+        vars.requestBody = vm.serializeString(".", "explorer_page_config", vars.tmp);
 
-        vars.response = self.http.build().POST(
-            string.concat(BASE_URL, "/account/", i.accountSlug, "/project/", i.projectSlug, "/vnets")
-        ).withBody(vars.requestBody).withHeader("Content-Type", "application/json").withHeader(
-            "X-Access-Key", i.accessKey
-        ).request();
+        vars.response = instance(self).http.instance().POST(
+            string.concat(
+                BASE_URL, "/account/", instance(self).accountSlug, "/project/", instance(self).projectSlug, "/vnets"
+            )
+        ).withBody(vars.requestBody).request();
 
         return VirtualTestnet({
             id: abi.decode(vm.parseJson(vars.response.data, ".id"), (string)),
@@ -121,7 +131,6 @@ library Tenderly {
         uint256 value,
         bytes memory data
     ) internal returns (string memory) {
-        Instance memory i = _instance(self);
         HTTPVars memory vars;
 
         string memory callArgs;
@@ -134,11 +143,18 @@ library Tenderly {
         callArgs = vm.serializeBytes(".", "data", data);
         vars.requestBody = vm.serializeString(".", "callArgs", callArgs);
 
-        vars.response = self.http.build().POST(
+        vars.response = instance(self).http.instance().POST(
             string.concat(
-                BASE_URL, "/account/", i.accountSlug, "/project/", i.projectSlug, "/vnets/", vnetId, "/transactions"
+                BASE_URL,
+                "/account/",
+                instance(self).accountSlug,
+                "/project/",
+                instance(self).projectSlug,
+                "/vnets/",
+                vnetId,
+                "/transactions"
             )
-        ).withBody(vars.requestBody).withHeader("X-Access-Key", i.accessKey).request();
+        ).withBody(vars.requestBody).request();
 
         return vars.response.data;
     }

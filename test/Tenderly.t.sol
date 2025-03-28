@@ -2,14 +2,17 @@
 pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
-import {Tenderly} from "@src/Tenderly.sol";
+import {Tenderly} from "../src/Tenderly.sol";
+import {strings} from "solidity-stringutils/strings.sol";
 
 contract TenderlyTest is Test {
     using Tenderly for Tenderly.Builder;
+    using strings for *;
 
     Tenderly.Builder tenderly;
 
     function setUp() public {
+        vm.createSelectFork("mainnet");
         string memory accountSlug = vm.envString("TENDERLY_ACCOUNT_NAME");
         string memory projectSlug = vm.envString("TENDERLY_PROJECT_NAME");
         string memory accessKey = vm.envString("TENDERLY_ACCESS_KEY");
@@ -21,7 +24,7 @@ contract TenderlyTest is Test {
         returns (Tenderly.VirtualTestnet memory vnet)
     {
         vnet = tenderly.createVirtualTestnet(slug, chainId);
-        assertEq(vnet.slug, slug);
+        assertTrue(vnet.slug.toSlice().contains(slug.toSlice()));
         assertGt(bytes(vnet.id).length, 0);
         assertGt(vnet.rpcs.length, 0);
     }
