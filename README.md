@@ -36,7 +36,7 @@ function setUp() public {
 
 ```solidity
 // Create a Virtual Testnet
-Tenderly.VirtualTestnet memory vnet = tenderly.createVirtualTestnet("my-vtn", 1_000_000 + block.chainid);
+Tenderly.VirtualTestnet memory vnet = tenderly.createVirtualTestnet("my-vnet", 1_000_000 + block.chainid);
 console.log("Virtual TestNet ID:", vnet.id);
 
 // Submit a transaction
