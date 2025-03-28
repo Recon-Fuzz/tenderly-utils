@@ -1,66 +1,62 @@
-## Foundry
+## tenderly-utils
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Interact with the [Tenderly API](https://docs.tenderly.co/api) from Foundry scripts.
 
-Foundry consists of:
+### Installation
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+forge install Recon-Fuzz/tenderly-utils
 ```
 
-### Test
+### Usage
 
-```shell
-$ forge test
+#### 1. Import the library
+
+```solidity
+import {Tenderly} from "tenderly-utils/Tenderly.sol";
 ```
 
-### Format
+#### 2. Initialize the client
 
-```shell
-$ forge fmt
+Build the client by passing your account slug, project slug, and access key.
+
+```solidity
+Tenderly.Builder tenderly;
+
+function setUp() public {
+    string memory accountSlug = vm.envString("TENDERLY_ACCOUNT_NAME");
+    string memory projectSlug = vm.envString("TENDERLY_PROJECT_NAME");
+    string memory accessKey = vm.envString("TENDERLY_ACCESS_KEY");
+
+    tenderly.build(accountSlug, projectSlug, accessKey);
+}
 ```
 
-### Gas Snapshots
+#### 3. Create and manage Virtual TestNets
 
-```shell
-$ forge snapshot
+```solidity
+// Create a Virtual Testnet
+Tenderly.VirtualTestnet memory vnet = tenderly.createVirtualTestnet("my-vtn", 1_000_000 + block.chainid);
+console.log("Virtual TestNet ID:", vnet.id);
+
+// Submit a transaction
+// ...
 ```
 
-### Anvil
+### Requirements
 
-```shell
-$ anvil
+- Foundry with FFI enabled:
+  - Pass `--ffi` to your commands (e.g. `forge test --ffi`)
+  - Or set `ffi = true` in your `foundry.toml`
+
+```toml
+[profile.default]
+ffi = true
 ```
 
-### Deploy
+- A UNIX-based environment with the following installed:
+  - `node`
+  - All `Recon-Fuzz/solidity-http` dependencies
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- Tenderly API access:
+  - Get your account/project slug and access key from the [Tenderly dashboard](https://dashboard.tenderly.co)

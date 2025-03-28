@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Vm} from "forge-std/Vm.sol";
 import {HTTP} from "solidity-http/HTTP.sol";
+import {console} from "forge-std/console.sol";
 
 library Tenderly {
     using HTTP for HTTP.Builder;
@@ -62,7 +63,7 @@ library Tenderly {
         internal
         returns (VirtualTestnet memory)
     {
-        HTTP.Response memory response = instance(self).http.build().GET(
+        HTTP.Response memory response = instance(self).http.instance().GET(
             string.concat(
                 BASE_URL,
                 "/account/",
@@ -120,6 +121,56 @@ library Tenderly {
             rpcs: abi.decode(vm.parseJson(vars.response.data, ".rpcs"), (Rpc[])),
             slug: abi.decode(vm.parseJson(vars.response.data, ".slug"), (string))
         });
+    }
+
+    // No docs
+    function getVirtualTestnets(Builder storage self) internal returns (VirtualTestnet[] memory) {
+        HTTP.Response memory response = instance(self).http.instance().GET(
+            string.concat(
+                BASE_URL, "/account/", instance(self).accountSlug, "/project/", instance(self).projectSlug, "/vnets"
+            )
+        ).request();
+
+        string[] memory args = new string[](4);
+        args[0] = "node";
+        args[1] = "-e";
+        args[2] = "console.log(JSON.parse(process.argv[1]).length)";
+        args[3] = response.data;
+        bytes memory length = vm.ffi(args);
+        uint256 count = vm.parseUint(string(length));
+
+        VirtualTestnet[] memory vnets = new VirtualTestnet[](count);
+
+        for (uint256 i = 0; i < count; i++) {
+            string memory prefix = string.concat("[", vm.toString(i), "]");
+
+            bytes memory idRaw = vm.parseJson(response.data, string.concat(prefix, ".id"));
+            bytes memory rpcsRaw = vm.parseJson(response.data, string.concat(prefix, ".rpcs"));
+            bytes memory slugRaw = vm.parseJson(response.data, string.concat(prefix, ".slug"));
+
+            vnets[i] = VirtualTestnet({
+                id: abi.decode(idRaw, (string)),
+                rpcs: abi.decode(rpcsRaw, (Rpc[])),
+                slug: abi.decode(slugRaw, (string))
+            });
+        }
+
+        return vnets;
+    }
+
+    // https://docs.tenderly.co/reference/api#/operations/deleteVnet
+    function deleteVirtualTestnetById(Builder storage self, string memory vnetId) internal {
+        instance(self).http.instance().DELETE(
+            string.concat(
+                BASE_URL,
+                "/account/",
+                instance(self).accountSlug,
+                "/project/",
+                instance(self).projectSlug,
+                "/vnets/",
+                vnetId
+            )
+        ).request();
     }
 
     // https://docs.tenderly.co/reference/api#/operations/sendTransaction
