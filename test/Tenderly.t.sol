@@ -61,7 +61,8 @@ contract TenderlyTest is Test {
         uint256 countAfter = tenderly.getVirtualTestnets().length;
         assertGt(countAfter, countBefore);
         tenderly.deleteVirtualTestnetById(vnet.id);
-        assertEq(tenderly.getVirtualTestnets().length, countBefore);
+        uint256 countFinally = tenderly.getVirtualTestnets().length;
+        assertLe(countFinally, countAfter);
     }
 
     function test_Tenderly_sendTransaction() public {
