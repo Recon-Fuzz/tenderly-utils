@@ -42,7 +42,9 @@ Tenderly.VirtualTestnet memory vnet = tenderly.createVirtualTestnet("my-vnet", 1
 console.log("Virtual TestNet ID:", vnet.id);
 
 // Submit a transaction
-// ...
+Tenderly.Transaction memory transaction = tenderly.sendTransaction(
+  vnet.id, from, weth, 0, abi.encodeCall(IWETH.withdraw.selector, (amount))
+);
 ```
 
 ### Requirements
