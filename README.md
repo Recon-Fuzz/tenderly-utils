@@ -21,14 +21,16 @@ import {Tenderly} from "tenderly-utils/Tenderly.sol";
 Build the client by passing your account slug, project slug, and access key.
 
 ```solidity
-Tenderly.Builder tenderly;
+using Tenderly for *;
+
+Tenderly.Client tenderly;
 
 function setUp() public {
     string memory accountSlug = vm.envString("TENDERLY_ACCOUNT_NAME");
     string memory projectSlug = vm.envString("TENDERLY_PROJECT_NAME");
     string memory accessKey = vm.envString("TENDERLY_ACCESS_KEY");
 
-    tenderly.build(accountSlug, projectSlug, accessKey);
+    tenderly.initialize(accountSlug, projectSlug, accessKey);
 }
 ```
 

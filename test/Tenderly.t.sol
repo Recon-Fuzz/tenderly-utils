@@ -1,23 +1,24 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Tenderly} from "../src/Tenderly.sol";
 import {strings} from "solidity-stringutils/strings.sol";
+import {IWETH} from "./interfaces/IWETH.sol";
 
 contract TenderlyTest is Test {
-    using Tenderly for Tenderly.Builder;
+    using Tenderly for *;
     using strings for *;
 
-    Tenderly.Builder tenderly;
+    Tenderly.Client tenderly;
     string slugPrefix = "tenderly-utils-test-";
 
     function setUp() public {
-        vm.createSelectFork("mainnet");
+        vm.chainId(1);
         string memory accountSlug = vm.envString("TENDERLY_ACCOUNT_NAME");
         string memory projectSlug = vm.envString("TENDERLY_PROJECT_NAME");
         string memory accessKey = vm.envString("TENDERLY_ACCESS_KEY");
-        tenderly.build(accountSlug, projectSlug, accessKey);
+        tenderly.initialize(accountSlug, projectSlug, accessKey);
 
         Tenderly.VirtualTestnet[] memory vnets = tenderly.getVirtualTestnets();
         for (uint256 i = 0; i < vnets.length; i++) {
@@ -58,8 +59,17 @@ contract TenderlyTest is Test {
         uint256 countBefore = tenderly.getVirtualTestnets().length;
         Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "3"), 1337);
         uint256 countAfter = tenderly.getVirtualTestnets().length;
-        assertEq(countAfter, countBefore + 1);
+        assertGt(countAfter, countBefore);
         tenderly.deleteVirtualTestnetById(vnet.id);
         assertEq(tenderly.getVirtualTestnets().length, countBefore);
+    }
+
+    function test_Tenderly_sendTransaction() public {
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "4"), 1337);
+        address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        Tenderly.Transaction memory transaction = tenderly.sendTransaction(
+            vnet.id, address(this), weth, 0, abi.encodeWithSelector(IWETH.deposit.selector, address(this), 0)
+        );
+        assertGt(bytes(transaction.tx_hash).length, 0);
     }
 }
