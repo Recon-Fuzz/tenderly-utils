@@ -73,4 +73,25 @@ contract TenderlyTest is Test {
         );
         assertGt(bytes(transaction.tx_hash).length, 0);
     }
+
+    function test_Tenderly_setStorageAt() public {
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "5"), 1337);
+        address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        bytes32 slot = bytes32(uint256(2));
+        bytes32 value = bytes32(uint256(6));
+        tenderly.setStorageAt(vnet, weth, slot, value);
+
+        bytes32 storageAt = tenderly.getStorageAt(vnet, weth, slot);
+        assertEq(storageAt, value);
+    }
+
+    function test_Tenderly_setBalance() public {
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "6"), 1337);
+        address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        uint256 balance = 1000 ether;
+        tenderly.setBalance(vnet, weth, balance);
+
+        uint256 balance2 = tenderly.getBalance(vnet, weth);
+        assertEq(balance2, balance);
+    }
 }

@@ -3,20 +3,27 @@ pragma solidity ^0.8.13;
 
 import {Vm} from "forge-std/Vm.sol";
 import {HTTP} from "solidity-http/HTTP.sol";
+import {strings} from "solidity-stringutils/strings.sol";
 import {console} from "forge-std/console.sol";
+import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 library Tenderly {
     using HTTP for *;
+    using strings for *;
 
     Vm constant vm = Vm(address(bytes20(uint160(uint256(keccak256("hevm cheat code"))))));
 
     string constant BASE_URL = "https://api.tenderly.co/api/v1";
+
+    error PublicRpcNotFound(string vnetId);
+    error AdminRpcNotFound(string vnetId);
 
     struct Instance {
         string accountSlug;
         string projectSlug;
         string accessKey;
         HTTP.Client http;
+        uint256 rpcRequestId;
     }
 
     struct Client {
@@ -180,6 +187,24 @@ library Tenderly {
         ).request();
     }
 
+    function getPublicRpcUrl(VirtualTestnet memory vnet) internal pure returns (string memory) {
+        for (uint256 i = 0; i < vnet.rpcs.length; i++) {
+            if (vnet.rpcs[i].name.toSlice().contains("Public RPC".toSlice())) {
+                return vnet.rpcs[i].url;
+            }
+        }
+        revert PublicRpcNotFound(vnet.id);
+    }
+
+    function getAdminRpcUrl(VirtualTestnet memory vnet) internal pure returns (string memory) {
+        for (uint256 i = 0; i < vnet.rpcs.length; i++) {
+            if (vnet.rpcs[i].name.toSlice().contains("Admin RPC".toSlice())) {
+                return vnet.rpcs[i].url;
+            }
+        }
+        revert AdminRpcNotFound(vnet.id);
+    }
+
     // https://docs.tenderly.co/reference/api#/operations/sendTransaction
     function sendTransaction(
         Client storage self,
@@ -216,5 +241,91 @@ library Tenderly {
             id: abi.decode(vm.parseJson(vars.response.data, ".id"), (string)),
             tx_hash: vm.toString(abi.decode(vm.parseJson(vars.response.data, ".tx_hash"), (bytes32)))
         });
+    }
+
+    // https://docs.tenderly.co/virtual-testnets/admin-rpc#tenderly_setbalance
+    function setBalance(Client storage self, VirtualTestnet memory vnet, address target, uint256 value) internal {
+        HTTPVars memory vars;
+
+        vars.requestBody = vm.serializeString(".setBalance", "jsonrpc", "2.0");
+        vars.requestBody = vm.serializeString(".setBalance", "method", "tenderly_setBalance");
+        string[] memory params = new string[](2);
+        params[0] = vm.toString(target);
+        params[1] = Strings.toHexString(value);
+        vars.requestBody = vm.serializeString(".setBalance", "params", params);
+        vars.requestBody = vm.serializeString(".setBalance", "id", vm.toString(instance(self).rpcRequestId));
+        instance(self).rpcRequestId++;
+
+        string memory adminRpcUrl = getAdminRpcUrl(vnet);
+        vars.response =
+            instance(self).http.instance().POST(string.concat(adminRpcUrl)).withBody(vars.requestBody).request();
+    }
+
+    // https://docs.tenderly.co/node/rpc-reference/ethereum-mainnet/eth_getBalance
+    function getBalance(Client storage self, VirtualTestnet memory vnet, address target) internal returns (uint256) {
+        HTTPVars memory vars;
+
+        vars.requestBody = vm.serializeString(".getBalance", "jsonrpc", "2.0");
+        vars.requestBody = vm.serializeString(".getBalance", "method", "eth_getBalance");
+        vars.requestBody = vm.serializeString(".getBalance", "id", vm.toString(instance(self).rpcRequestId));
+        string[] memory params = new string[](2);
+        params[0] = vm.toString(target);
+        params[1] = "latest";
+        vars.requestBody = vm.serializeString(".getBalance", "params", params);
+        instance(self).rpcRequestId++;
+
+        string memory publicRpcUrl = getPublicRpcUrl(vnet);
+        vars.response =
+            instance(self).http.instance().POST(string.concat(publicRpcUrl)).withBody(vars.requestBody).request();
+
+        bytes memory balance = abi.decode(vm.parseJson(vars.response.data, ".result"), (bytes));
+        return Strings.parseHexUint(vm.toString(balance));
+    }
+
+    // https://docs.tenderly.co/virtual-testnets/admin-rpc#tenderly_setstorageat
+    function setStorageAt(Client storage self, VirtualTestnet memory vnet, address target, bytes32 slot, bytes32 value)
+        internal
+    {
+        HTTPVars memory vars;
+
+        vars.requestBody = vm.serializeString(".setStorageAt", "jsonrpc", "2.0");
+        vars.requestBody = vm.serializeString(".setStorageAt", "method", "tenderly_setStorageAt");
+        string[] memory params = new string[](3);
+        params[0] = vm.toString(target);
+        params[1] = vm.toString(slot);
+        params[2] = vm.toString(value);
+        vars.requestBody = vm.serializeString(".setStorageAt", "params", params);
+        vars.requestBody = vm.serializeString(".setStorageAt", "id", vm.toString(instance(self).rpcRequestId));
+        instance(self).rpcRequestId++;
+
+        string memory adminRpcUrl = getAdminRpcUrl(vnet);
+
+        vars.response =
+            instance(self).http.instance().POST(string.concat(adminRpcUrl)).withBody(vars.requestBody).request();
+    }
+
+    // https://docs.tenderly.co/node/rpc-reference/ethereum-mainnet/eth_getStorageAt
+    function getStorageAt(Client storage self, VirtualTestnet memory vnet, address target, bytes32 slot)
+        internal
+        returns (bytes32)
+    {
+        HTTPVars memory vars;
+
+        vars.requestBody = vm.serializeString(".getStorageAt", "jsonrpc", "2.0");
+        vars.requestBody = vm.serializeString(".getStorageAt", "method", "eth_getStorageAt");
+        string[] memory params = new string[](3);
+        params[0] = vm.toString(target);
+        params[1] = vm.toString(slot);
+        params[2] = "latest";
+        vars.requestBody = vm.serializeString(".getStorageAt", "params", params);
+        vars.requestBody = vm.serializeString(".getStorageAt", "id", vm.toString(instance(self).rpcRequestId));
+        instance(self).rpcRequestId++;
+
+        string memory publicRpcUrl = getPublicRpcUrl(vnet);
+
+        vars.response =
+            instance(self).http.instance().POST(string.concat(publicRpcUrl)).withBody(vars.requestBody).request();
+
+        return abi.decode(vm.parseJson(vars.response.data, ".result"), (bytes32));
     }
 }
