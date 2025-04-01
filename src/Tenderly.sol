@@ -243,6 +243,13 @@ library Tenderly {
         });
     }
 
+    function sendTransaction(Client storage self, string memory vnetId, address from, address to, bytes memory data)
+        internal
+        returns (Transaction memory)
+    {
+        return sendTransaction(self, vnetId, from, to, 0, data);
+    }
+
     // https://docs.tenderly.co/virtual-testnets/admin-rpc#tenderly_setbalance
     function setBalance(Client storage self, VirtualTestnet memory vnet, address target, uint256 value) internal {
         HTTPVars memory vars;
