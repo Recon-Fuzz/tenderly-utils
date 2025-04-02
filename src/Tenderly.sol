@@ -2,10 +2,9 @@
 pragma solidity ^0.8.13;
 
 import {Vm} from "forge-std/Vm.sol";
-import {HTTP} from "solidity-http/HTTP.sol";
-import {strings} from "solidity-stringutils/strings.sol";
-import {console} from "forge-std/console.sol";
-import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
+import {HTTP} from "../lib/solidity-http/src/HTTP.sol";
+import {strings} from "../lib/solidity-stringutils/src/strings.sol";
+import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 library Tenderly {
     using HTTP for *;

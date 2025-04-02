@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Tenderly} from "../src/Tenderly.sol";
-import {strings} from "solidity-stringutils/strings.sol";
+import {strings} from "../lib/solidity-stringutils/src/strings.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 
 contract TenderlyTest is Test {
