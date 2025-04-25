@@ -38,7 +38,7 @@ function setUp() public {
 
 ```solidity
 // Create a Virtual Testnet
-Tenderly.VirtualTestnet memory vnet = tenderly.createVirtualTestnet("my-vnet", 1_000_000 + block.chainid);
+Tenderly.VirtualTestnet memory vnet = tenderly.createVirtualTestnet("my-vnet", block.chainid);
 console.log("Virtual TestNet ID:", vnet.id);
 
 // Submit a transaction
@@ -64,3 +64,11 @@ ffi = true
 
 - Tenderly API access:
   - Get your account/project slug and access key from the [Tenderly dashboard](https://dashboard.tenderly.co)
+
+### Disclaimer
+
+This code is provided "as is" and has not undergone a formal security audit.
+
+Use it at your own risk. The author(s) assume no liability for any damages or losses resulting from the use of this code. It is your responsibility to thoroughly review, test, and validate its security and functionality before deploying or relying on it in any environment.
+
+This is not an official [@tenderly](https://github.com/tenderly) library
