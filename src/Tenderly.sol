@@ -292,6 +292,24 @@ library Tenderly {
             instance(self).http.instance().POST(string.concat(adminRpcUrl)).withBody(vars.requestBody).request();
     }
 
+    // https://docs.tenderly.co/virtual-testnets/admin-rpc#tenderly_setcode
+    function setCode(Client storage self, VirtualTestnet memory vnet, address target, bytes memory code) internal {
+        HTTPVars memory vars;
+
+        vars.requestBody = vm.serializeString(".setCode", "jsonrpc", "2.0");
+        vars.requestBody = vm.serializeString(".setCode", "method", "tenderly_setCode");
+        string[] memory params = new string[](2);
+        params[0] = vm.toString(target);
+        params[1] = vm.toString(code);
+        vars.requestBody = vm.serializeString(".setCode", "params", params);
+        vars.requestBody = vm.serializeString(".setCode", "id", vm.toString(instance(self).rpcRequestId));
+        instance(self).rpcRequestId++;
+
+        string memory adminRpcUrl = getAdminRpcUrl(vnet);
+        vars.response =
+            instance(self).http.instance().POST(string.concat(adminRpcUrl)).withBody(vars.requestBody).request();
+    }
+
     // https://docs.tenderly.co/node/rpc-reference/ethereum-mainnet/eth_getBalance
     function getBalance(Client storage self, VirtualTestnet memory vnet, address target) internal returns (uint256) {
         HTTPVars memory vars;
