@@ -16,6 +16,7 @@ library Tenderly {
 
     error PublicRpcNotFound(string vnetId);
     error AdminRpcNotFound(string vnetId);
+    error HttpError(uint256 status, string data);
 
     struct Instance {
         string accountSlug;
@@ -129,6 +130,8 @@ library Tenderly {
             )
         ).withBody(vars.requestBody).request();
 
+        _checkHttp2xx(vars.response);
+
         return VirtualTestnet({
             id: abi.decode(vm.parseJson(vars.response.data, ".id"), (string)),
             rpcs: abi.decode(vm.parseJson(vars.response.data, ".rpcs"), (Rpc[])),
@@ -147,7 +150,7 @@ library Tenderly {
         string[] memory args = new string[](4);
         args[0] = "node";
         args[1] = "-e";
-        args[2] = "console.log(JSON.parse(process.argv[1]).length)";
+        args[2] = "console.log('0x' + JSON.parse(process.argv[1]).length.toString(16))";
         args[3] = response.data;
         bytes memory length = vm.ffi(args);
         uint256 count = vm.parseUint(string(length));
@@ -173,7 +176,7 @@ library Tenderly {
 
     // https://docs.tenderly.co/reference/api#/operations/deleteVnet
     function deleteVirtualTestnetById(Client storage self, string memory vnetId) internal {
-        instance(self).http.instance().DELETE(
+        HTTP.Response memory response = instance(self).http.instance().DELETE(
             string.concat(
                 BASE_URL,
                 "/account/",
@@ -184,6 +187,8 @@ library Tenderly {
                 vnetId
             )
         ).request();
+
+        _checkHttp2xx(response);
     }
 
     function getPublicRpcUrl(VirtualTestnet memory vnet) internal pure returns (string memory) {
@@ -236,6 +241,8 @@ library Tenderly {
             )
         ).withBody(vars.requestBody).request();
 
+        _checkHttp2xx(vars.response);
+
         return Transaction({
             id: abi.decode(vm.parseJson(vars.response.data, ".id"), (string)),
             tx_hash: vm.toString(abi.decode(vm.parseJson(vars.response.data, ".tx_hash"), (bytes32)))
@@ -265,6 +272,8 @@ library Tenderly {
         string memory adminRpcUrl = getAdminRpcUrl(vnet);
         vars.response =
             instance(self).http.instance().POST(string.concat(adminRpcUrl)).withBody(vars.requestBody).request();
+
+        _checkHttp2xx(vars.response);
     }
 
     // https://docs.tenderly.co/node/rpc-reference/ethereum-mainnet/eth_getBalance
@@ -308,6 +317,8 @@ library Tenderly {
 
         vars.response =
             instance(self).http.instance().POST(string.concat(adminRpcUrl)).withBody(vars.requestBody).request();
+
+        _checkHttp2xx(vars.response);
     }
 
     // https://docs.tenderly.co/node/rpc-reference/ethereum-mainnet/eth_getStorageAt
@@ -333,5 +344,49 @@ library Tenderly {
             instance(self).http.instance().POST(string.concat(publicRpcUrl)).withBody(vars.requestBody).request();
 
         return abi.decode(vm.parseJson(vars.response.data, ".result"), (bytes32));
+    }
+
+    // https://docs.tenderly.co/virtual-testnets/admin-rpc#evm_increasetime
+    function increaseTime(Client storage self, VirtualTestnet memory vnet, uint256 quantity) internal {
+        HTTPVars memory vars;
+
+        vars.requestBody = vm.serializeString(".increaseTime", "jsonrpc", "2.0");
+        vars.requestBody = vm.serializeString(".increaseTime", "method", "evm_increaseTime");
+        vars.requestBody = vm.serializeString(".increaseTime", "id", vm.toString(instance(self).rpcRequestId));
+        string[] memory params = new string[](1);
+        params[0] = vm.toString(quantity);
+        vars.requestBody = vm.serializeString(".increaseTime", "params", params);
+        instance(self).rpcRequestId++;
+
+        string memory adminRpcUrl = getAdminRpcUrl(vnet);
+        vars.response =
+            instance(self).http.instance().POST(string.concat(adminRpcUrl)).withBody(vars.requestBody).request();
+
+        _checkHttp2xx(vars.response);
+    }
+
+    // https://docs.tenderly.co/virtual-testnets/admin-rpc#evm_increaseblocks
+    function increaseBlocks(Client storage self, VirtualTestnet memory vnet, uint256 quantity) internal {
+        HTTPVars memory vars;
+
+        vars.requestBody = vm.serializeString(".increaseBlocks", "jsonrpc", "2.0");
+        vars.requestBody = vm.serializeString(".increaseBlocks", "method", "evm_increaseBlocks");
+        vars.requestBody = vm.serializeString(".increaseBlocks", "id", vm.toString(instance(self).rpcRequestId));
+        string[] memory params = new string[](1);
+        params[0] = vm.toString(quantity);
+        vars.requestBody = vm.serializeString(".increaseBlocks", "params", params);
+        instance(self).rpcRequestId++;
+
+        string memory adminRpcUrl = getAdminRpcUrl(vnet);
+        vars.response =
+            instance(self).http.instance().POST(string.concat(adminRpcUrl)).withBody(vars.requestBody).request();
+
+        _checkHttp2xx(vars.response);
+    }
+
+    function _checkHttp2xx(HTTP.Response memory response) internal pure {
+        if (response.status < 200 || response.status >= 300) {
+            revert HttpError(response.status, response.data);
+        }
     }
 }

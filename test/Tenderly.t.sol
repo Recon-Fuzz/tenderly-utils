@@ -5,6 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {Tenderly} from "../src/Tenderly.sol";
 import {strings} from "../lib/solidity-stringutils/src/strings.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
+import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract TenderlyTest is Test {
     using Tenderly for *;
@@ -23,6 +24,7 @@ contract TenderlyTest is Test {
         Tenderly.VirtualTestnet[] memory vnets = tenderly.getVirtualTestnets();
         for (uint256 i = 0; i < vnets.length; i++) {
             if (vnets[i].slug.toSlice().contains(slugPrefix.toSlice())) {
+                console.log("deleting vnet", vnets[i].id, vnets[i].slug);
                 tenderly.deleteVirtualTestnetById(vnets[i].id);
             }
         }
@@ -39,11 +41,11 @@ contract TenderlyTest is Test {
     }
 
     function test_Tenderly_createVirtualTestnet() public {
-        _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "1"), 7357);
+        _test_Tenderly_createVirtualTestnet(_slug(msg.sig), 7357);
     }
 
     function test_Tenderly_getVirtualTestnetById() public {
-        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "2"), 1337);
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(_slug(msg.sig), 1337);
         Tenderly.VirtualTestnet memory vnet2 = tenderly.getVirtualTestnetById(vnet.id);
         assertEq(vnet2.id, vnet.id);
     }
@@ -57,7 +59,7 @@ contract TenderlyTest is Test {
 
     function test_Tenderly_deleteVirtualTestnetById() public {
         uint256 countBefore = tenderly.getVirtualTestnets().length;
-        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "3"), 1337);
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(_slug(msg.sig), 1337);
         uint256 countAfter = tenderly.getVirtualTestnets().length;
         assertGt(countAfter, countBefore);
         tenderly.deleteVirtualTestnetById(vnet.id);
@@ -66,7 +68,7 @@ contract TenderlyTest is Test {
     }
 
     function test_Tenderly_sendTransaction() public {
-        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "4"), 1337);
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(_slug(msg.sig), 1337);
         address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
         Tenderly.Transaction memory transaction = tenderly.sendTransaction(
             vnet.id, address(this), weth, 0, abi.encodeWithSelector(IWETH.deposit.selector, address(this), 0)
@@ -75,7 +77,7 @@ contract TenderlyTest is Test {
     }
 
     function test_Tenderly_setStorageAt() public {
-        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "5"), 1337);
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(_slug(msg.sig), 1337);
         address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
         bytes32 slot = bytes32(uint256(2));
         bytes32 value = bytes32(uint256(6));
@@ -86,12 +88,26 @@ contract TenderlyTest is Test {
     }
 
     function test_Tenderly_setBalance() public {
-        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(string.concat(slugPrefix, "6"), 1337);
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(_slug(msg.sig), 1337);
         address weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
         uint256 balance = 1000 ether;
         tenderly.setBalance(vnet, weth, balance);
 
         uint256 balance2 = tenderly.getBalance(vnet, weth);
         assertEq(balance2, balance);
+    }
+
+    function test_Tenderly_increaseTime() public {
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(_slug(msg.sig), 1337);
+        tenderly.increaseTime(vnet, 24 hours);
+    }
+
+    function test_Tenderly_increaseBlocks() public {
+        Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(_slug(msg.sig), 1337);
+        tenderly.increaseBlocks(vnet, 1);
+    }
+
+    function _slug(bytes4 suffix) internal view returns (string memory) {
+        return string.concat(slugPrefix, Strings.toHexString(uint256(uint32(suffix))));
     }
 }

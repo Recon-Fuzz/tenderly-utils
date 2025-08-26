@@ -4,4 +4,8 @@ out = "out"
 libs = ["lib"]
 ffi = true
 
+[lint]
+ignore = ["test/**/*", "script/**/*"]
+exclude_lints = ["mixed-case-variable", "screaming-snake-case-immutable", "screaming-snake-case-const", "pascal-case-struct"]
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
