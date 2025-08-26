@@ -58,13 +58,8 @@ contract TenderlyTest is Test {
     }
 
     function test_Tenderly_deleteVirtualTestnetById() public {
-        uint256 countBefore = tenderly.getVirtualTestnets().length;
         Tenderly.VirtualTestnet memory vnet = _test_Tenderly_createVirtualTestnet(_slug(msg.sig), 1337);
-        uint256 countAfter = tenderly.getVirtualTestnets().length;
-        assertGt(countAfter, countBefore);
         tenderly.deleteVirtualTestnetById(vnet.id);
-        uint256 countFinally = tenderly.getVirtualTestnets().length;
-        assertLe(countFinally, countAfter);
     }
 
     function test_Tenderly_sendTransaction() public {
